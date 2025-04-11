@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathQuill Calculator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .calculator {
+            display: inline-block;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+        }
+        #math-field {
+            width: 300px;
+            height: 40px;
+            font-size: 24px;
+            border: 1px solid #ccc;
+            padding: 5px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 20px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator">
+    <h2>Enter a Math Expression</h2>
+    <div id="math-field"></div> <!-- MathQuill input field -->
+    <button onclick="evaluateExpression()">Evaluate</button>
+    <div id="result"></div> <!-- Display result -->
+</div>
+
+<script>
+$(document).ready(function() {
+    // Initialize MathQuill
+    const MQ = MathQuill.getInterface(2);
+    const mathField = MQ.MathField(document.getElementById('math-field'), {
+        spaceBehavesLikeTab: true, // Allow space to move to the next block
+    });
+
+    // Function to evaluate MathQuill input
+    window.evaluateExpression = function() {
+
+
+        document.getElementById('math-field').addEventListener('input', function () {
+            const input = document.getElementById('expression-input').value;
+
+            try {
+                // Parse the expression
+                const node = math.parse(input);
+                // Convert to LaTeX
+                const latexStr = math.parse(input).toTex();
+                document.getElementById('latex-output').innerText = latexStr;
+            } catch (error) {
+                document.getElementById('latex-output').innerText = 'Error: ' + error.message;
+            }
+        });
+
+        const latexInput = mathField.latex(); // Get the LaTeX format from MathQuill
+
+
+        // Convert LaTeX to JavaScript-friendly expression
+        let jsExpression = latexInput
+            .replace(/\\frac{([^}]+)}{([^}]+)}/g, '($1)/($2)') // Handle fractions
+            .replace(/\\cdot/g, '*') // Handle multiplication
+            .replace(/\\sqrt{([^}]+)}/g, 'Math.sqrt($1)')
+            .replace(/\\sqrt\[(\d+)]{([^}]+)}/g, 'Math.pow($2, 1/$1)') // Handle cube roots or other nth roots
+            .replace(/\\sin/g, 'Math.sin') // Handle sin
+            .replace(/\\cos/g, 'Math.cos') // Handle cos
+            .replace(/\\tan/g, 'Math.tan') // Handle tan
+            .replace(/\\log/g, 'Math.log10') // Handle log
+            .replace(/\\ln/g, 'Math.log') // Handle natural logarithm
+            .replace(/\\left\(/g, '(') // Handle left parenthesis
+            .replace(/\\right\)/g, ')'); // Handle right parenthesis
+
+        let result;
+        try {
+            result = eval(jsExpression); // Use eval to calculate the result
+        } catch (error) {
+            result = "⚠️ Error: Invalid Expression"; // Catch any invalid expressions
+        }
+
+        $('#result').text(`Result: ${result}`); // Display the result
+    };
+});
+</script>
+
+</body>
+</html>

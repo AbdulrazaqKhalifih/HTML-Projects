@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Media Player</title>
+
+  <link rel="stylesheet" href="player2.css">
+
+ 
+
+</head>
+<body>
+
+  <!-- Tooltip element -->
+  <div id="tooltip" style="position: absolute; display: none; background-color: rgba(0, 0, 0, 0.75); color: white; padding: 5px; border-radius: 3px;"></div>
+
+<!-- Add this right after the opening <body> tag -->
+  <div class="modal-overlay" id="urlModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Enter Video URL</h3>
+            <button class="close-btn" id="closeModal">&times;</button>
+        </div>
+        <div class="url-input-group">
+            <input class="fancy-input" id="urlInput" type="url" placeholder="https://example.com/video.mp4">
+            <input class="fancy-button" type="button" id="loadVideoUrl" value="Load">
+        </div>
+    </div>
+</div>
+
+  <div class="container">
+    <div class="vertical-container">
+      <input class="fancy-button" type="button" id="loadVideoBtn" value="Load Video URL">
+      <div id="urlfeild"  style="display: none;">
+        <input class="fancy-input" id="urlInput" type="url">
+        <input class="fancy-button" type="button" id="loadVideoUrl" value="Load">
+      </div>
+      <label class="fancy-button">
+        <input type="file" id="folderInput" webkitdirectory directory multiple accept="video/*" />
+        Choose Folder
+      </label>
+      <label class="fancy-button">
+        <input type="file" id="fileInput" accept="video/*" />
+        Choose File
+      </label>
+      <ul id="videoList"></ul>
+    </div>
+
+    <div class="vertical-container">
+      <div class="video-container">
+        <!-- Video.js Player -->
+  <video
+        id="my-video"
+        class="video-js vjs-theme-fantasy"
+        controls
+        width="810" height="444"
+        data-setup='{}'
+      >
+      
+          <source id="video-source" src="C:\Users\abdul\OneDrive\Bureau\HTML Projects\Media Player\BigBuckBunny.mp4" type="video/mp4" />
+          <p class="vjs-no-js">
+            To view this video please enable JavaScript, and consider upgrading to a
+            web browser that <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>.
+          </p>
+        </video>
+      </div>
+
+    </div>
+  </div>
+
+  
+ <!-- Video.js CSS -->
+ <link href="C:\Users\abdul\OneDrive\Bureau\HTML Projects\Media Player\video-js.min.css" rel="stylesheet"/>
+ <link href="C:\Users\abdul\OneDrive\Bureau\HTML Projects\Media Player\index.css" rel="stylesheet"/>
+<!-- Video.js JavaScript -->
+<script src="C:\Users\abdul\OneDrive\Bureau\HTML Projects\Media Player\video.min.js"></script>
+<script src="C:\Users\abdul\OneDrive\Bureau\HTML Projects\Media Player\Youtube.min.js"></script> <!-- Add YouTube plugin JS -->
+
+<link href="https://unpkg.com/video.js@7/dist/video-js.min.css" rel="stylesheet"/>
+<link href="https://unpkg.com/@videojs/themes@1/dist/fantasy/index.css" rel="stylesheet"/>
+<!-- Video.js JavaScript -->
+<script src="https://vjs.zencdn.net/7.17.0/video.min.js"></script>
+<script src="https://unpkg.com/videojs-youtube/dist/Youtube.min.js"></script> <!-- Add YouTube plugin JS -->
+
+  <script>
+var player = videojs('my-video', {
+  controls: true,
+  autoplay: false,
+  preload: 'auto',
+  responsive: true // Enable responsiveness
+});
+
+player.on('loadeddata', function() {
+  console.log('Video preloaded successfully');
+});
+
+
+
+
+var folderInput = document.getElementById('folderInput');
+var fileInput = document.getElementById('fileInput');
+var videoSource = document.getElementById('video-source');
+var videoList = document.getElementById('videoList');
+
+// Create notification element inside the Video.js container
+var notification = document.createElement('div');
+notification.className = 'vjs-notification';
+player.el().appendChild(notification);
+
+// Function to show notification
+function showNotification(message) {
+  notification.innerText = message;
+  notification.style.display = 'block';
+  setTimeout(function() {
+    notification.style.display = 'none';
+  }, 1500);
+}
+
+// Handle folder input change to load the selected videos
+// Create a new Worker from an inline script or external JS file
+
+// The folder input change event listener
+folderInput.addEventListener('change', function (event) {
+  videoList.innerHTML = '';
+  var files = Array.from(event.target.files);
+
+  files.forEach(function (file) {
+  if (file.type.startsWith('video/')) {
+    var listItem = document.createElement('li');
+    listItem.className = 'video-item';
+
+    const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+    listItem.innerHTML = `<span class="listitemText">${fileNameWithoutExt}</span>`;
+
+
+
+    var fileURL = URL.createObjectURL(file);
+
+    // Thumbnail with poster
+    var thumbnailContainer = document.createElement('div');
+    thumbnailContainer.className = 'thumbnail-container';
+
+    var videoThumbnail = document.createElement('video');
+    videoThumbnail.className = 'thumbnail';
+    videoThumbnail.src = fileURL;
+    videoThumbnail.preload = 'metadata';
+    videoThumbnail.muted = true;
+    videoThumbnail.playsInline = true;
+    videoThumbnail.onloadedmetadata = function () {
+      videoThumbnail.currentTime = 1; // Grab the first frame
+    };
+
+    var durationTag = document.createElement('span');
+    durationTag.className = 'duration-tag';
+    videoThumbnail.onloadedmetadata = function () {
+      durationTag.textContent = formatTime(videoThumbnail.duration);
+    };
+
+    thumbnailContainer.appendChild(videoThumbnail);
+    thumbnailContainer.appendChild(durationTag);
+    listItem.prepend(thumbnailContainer);
+
+    var soundWave = document.createElement('span');
+    soundWave.className = 'sound-wave';
+    soundWave.style.display = 'none';
+    listItem.prepend(soundWave);
+
+    listItem.addEventListener('click', function () {
+      var items = videoList.getElementsByTagName('li');
+      for (var i = 0; i < items.length; i++) {
+        items[i].style.backgroundColor = '';
+        items[i].style.color = 'rgb(65, 65, 65)';
+        var waveIcon = items[i].querySelector('.sound-wave');
+        if (waveIcon) waveIcon.style.display = 'none';
+      }
+
+      listItem.style.backgroundColor = '#2575fc';
+      listItem.style.color = '#fff';
+      soundWave.style.display = 'inline-block';
+
+      videoSource.src = fileURL;
+      player.src({ src: fileURL, type: file.type });
+      player.load();
+      player.on('canplaythrough', function() {
+          console.log('Video is fully loaded, now playing.');
+          player.play();
+        });     
+      showNotification('Playing: ' + fileNameWithoutExt);
+    });
+
+    videoList.appendChild(listItem);
+  }
+});
+
+  
+  event.target.value = null;
+});
+// Function to format time as mm:ss
+function formatTime(seconds) {
+  let min = Math.floor(seconds / 60);
+  let sec = Math.floor(seconds % 60);
+  return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+
+
+// Handle file input change to load the selected video
+fileInput.addEventListener('change', function(event) {
+  // Clear the video list or previous video info if needed
+  videoList.innerHTML = '';
+  
+  // Get the selected file (only the first one, as it's a single-file input)
+  var file = event.target.files[0];
+
+  // Ensure the file exists and is a video
+  if (file && file.type.startsWith('video/')) {
+    // Get the file name without the extension
+    const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+
+    // Create a URL for the video file
+    var fileURL = URL.createObjectURL(file);
+    
+    // Create the list item to show the video name
+    var listItem = document.createElement('li');
+    listItem.className = 'video-item'; // Same class as folder items
+    listItem.dataset.title = fileNameWithoutExt; // Tooltip data-title attribute
+    
+    // Thumbnail container
+    var thumbnailContainer = document.createElement('div');
+    thumbnailContainer.className = 'thumbnail-container';
+    
+    var videoThumbnail = document.createElement('video');
+    videoThumbnail.className = 'thumbnail';
+    videoThumbnail.src = fileURL;
+    videoThumbnail.preload = 'metadata';
+    videoThumbnail.muted = true;
+    videoThumbnail.playsInline = true;
+    videoThumbnail.onloadedmetadata = function () {
+      videoThumbnail.currentTime = 1; // Grab the first frame
+    };
+
+    var durationTag = document.createElement('span');
+    durationTag.className = 'duration-tag';
+    videoThumbnail.onloadedmetadata = function () {
+      durationTag.textContent = formatTime(videoThumbnail.duration);
+    };
+
+    thumbnailContainer.appendChild(videoThumbnail);
+    thumbnailContainer.appendChild(durationTag);
+    listItem.appendChild(thumbnailContainer); // Append thumbnail container
+    
+    // Create the text label
+    var listItemText = document.createElement('span');
+    listItemText.className = 'listitemText';
+    listItemText.textContent = fileNameWithoutExt; // Set file name text
+    listItem.appendChild(listItemText); // Append text to the list item
+    
+    // Sound wave (hidden initially)
+    var soundWave = document.createElement('span');
+    soundWave.className = 'sound-wave';
+    soundWave.style.display = 'none';
+    listItem.prepend(soundWave); // Prepend the sound wave icon
+
+    // Add click event to play the video
+    listItem.addEventListener('click', function() {
+      // Remove background color from previous selections
+      var items = videoList.getElementsByTagName('li');
+      for (var i = 0; i < items.length; i++) {
+        items[i].style.backgroundColor = '';
+        items[i].style.color = 'rgb(65, 65, 65)';
+        var waveIcon = items[i].querySelector('.sound-wave');
+        if (waveIcon) waveIcon.style.display = 'none';
+      }
+
+      // Highlight selected item
+      listItem.style.backgroundColor = '#2575fc';
+      listItem.style.color = '#fff';
+      soundWave.style.display = 'inline-block'; // Show sound wave
+
+      // Play video
+      videoSource.src = fileURL;
+      player.src({ src: fileURL, type: file.type });
+      player.load();
+      player.play();
+      showNotification('Playing: ' + fileNameWithoutExt);
+    });
+
+    // Add the video item to the list
+    videoList.appendChild(listItem);
+  } else {
+    showNotification('Please select a valid video file.');
+  }
+
+  event.target.value = null; // Reset input value
+});
+
+// Add event listener for spacebar, arrow keys, N, M
+document.addEventListener('keydown', function(event) {
+  // Space bar to play/pause
+  if (event.code === 'Space') {
+    event.preventDefault();
+    if (player.paused()) {
+      player.play();
+      showNotification('Play');
+    } else {
+      player.pause();
+      showNotification('Pause');
+    }
+  }
+
+  // Left arrow key (rewind 5 seconds)
+  if (event.code === 'ArrowLeft') {
+    event.preventDefault();
+    var currentTime = player.currentTime();
+    player.currentTime(currentTime - 5);
+    showNotification('⯬ 5 seconds');
+  }
+
+  // Right arrow key (forward 5 seconds)
+  if (event.code === 'ArrowRight') {
+    event.preventDefault();
+    var currentTime = player.currentTime();
+    player.currentTime(currentTime + 5);
+    showNotification('⯮ 5 seconds');
+  }
+
+    // Left arrow key (rewind 5 seconds)
+    if (event.code === 'KeyA') {
+    event.preventDefault();
+    var currentTime = player.currentTime();
+    player.currentTime(currentTime - 20);
+    showNotification('⯬ 20 seconds');
+  }
+
+  // Right arrow key (forward 5 seconds)
+  if (event.code === 'KeyD') {
+    event.preventDefault();
+    var currentTime = player.currentTime();
+    player.currentTime(currentTime + 20);
+    showNotification('⯮ 20 seconds');
+  }
+
+   // Increase speed by 20% (KeyZ)
+   if (event.code === 'KeyZ') {
+    event.preventDefault();
+    var currentRate = player.playbackRate();
+    player.playbackRate(currentRate + 0.2);
+    
+    setTimeout(() => {
+      var rate = formatSpeed(player.playbackRate());
+      showNotification('🐇 Speed: ' + rate + 'x');
+    }, 50); // Small delay to let Video.js update
+  }
+
+  // Decrease speed by 20% (KeyX)
+  if (event.code === 'KeyX') {
+    event.preventDefault();
+    var currentRate = player.playbackRate();
+    if (currentRate - 0.2 >= 0.2) {
+      player.playbackRate(currentRate - 0.2);
+    }
+    
+    setTimeout(() => {
+      var rate = formatSpeed(player.playbackRate());
+      showNotification('🐢 Speed: ' + rate + 'x');
+    }, 50); // Small delay
+  }
+
+
+  // N key (reset speed to 1x)
+  if (event.code === 'KeyN') {
+    event.preventDefault();
+    player.playbackRate(1);
+    showNotification('🗣️ Speed: 1x (Normal)');
+  }
+
+  // M key (set speed to 2x)
+  if (event.code === 'KeyM') {
+    event.preventDefault();
+    player.playbackRate(2);
+    showNotification('🚀 Speed: 2x');
+  }
+
+
+    // Up Arrow key (increase volume)
+  if (event.code === 'ArrowUp') {
+    event.preventDefault();
+    let currentVolume = player.volume(); // Get current volume
+    let newVolume = Math.min(currentVolume + 0.1, 1); // Increase volume by 0.1, max is 1
+    player.volume(newVolume);
+    showNotification('🔊 Volume: ' + (newVolume * 100).toFixed(0) + '%');
+  }
+
+  // Down Arrow key (decrease volume)
+  if (event.code === 'ArrowDown') {
+    event.preventDefault();
+    let currentVolume = player.volume(); // Get current volume
+    let newVolume = Math.max(currentVolume - 0.1, 0); // Decrease volume by 0.1, min is 0
+    player.volume(newVolume);
+    showNotification('🔉 Volume: ' + (newVolume * 100).toFixed(0) + '%');
+  }
+
+   // P key (go to the next video)
+   // P key (go to the next video)
+   if (event.code === 'KeyP') {
+    event.preventDefault();
+    var currentVideoIndex = getCurrentVideoIndex(); // Function to get current video index
+    var nextVideoIndex = currentVideoIndex + 1;
+
+    if (nextVideoIndex < videoList.children.length) {
+      var nextVideo = videoList.children[nextVideoIndex];
+      var nextFileURL = nextVideo.querySelector('video').src;
+
+      // Update the player source and play the video
+      player.src({ src: nextFileURL, type: 'video/mp4' }); 
+      player.load();
+      player.play();
+      showNotification('Playing next video');
+
+      // Update the visual elements
+      updateVideoItemStyles(currentVideoIndex, nextVideoIndex);
+    } else {
+      showNotification('No more videos');
+    }
+  }
+
+  // I key (go to the previous video)
+  if (event.code === 'KeyI') {
+    event.preventDefault();
+    var currentVideoIndex = getCurrentVideoIndex(); // Function to get current video index
+    var prevVideoIndex = currentVideoIndex - 1;
+
+    if (prevVideoIndex >= 0) {
+      var prevVideo = videoList.children[prevVideoIndex];
+      var prevFileURL = prevVideo.querySelector('video').src;
+
+      // Update the player source and play the video
+      player.src({ src: prevFileURL, type: 'video/mp4' }); 
+      player.load();
+      player.play();
+      showNotification('Playing previous video');
+
+      // Update the visual elements
+      updateVideoItemStyles(currentVideoIndex, prevVideoIndex);
+    } else {
+      showNotification('No previous videos');
+    }
+  }
+
+ 
+});
+
+// Function to get the current video index
+function getCurrentVideoIndex() {
+  var currentVideoSrc = player.src();
+  var videos = videoList.getElementsByTagName('li');
+  for (var i = 0; i < videos.length; i++) {
+    var video = videos[i].querySelector('video');
+    if (video.src === currentVideoSrc) {
+      return i; // Return the index of the current video
+    }
+  }
+  return -1; // Return -1 if video is not found
+}
+
+// Function to update the visual elements (background color, soundwave visibility)
+function updateVideoItemStyles(prevIndex, newIndex) {
+  // Reset the previous item's styles
+  var prevItem = videoList.children[prevIndex];
+  if (prevItem) {
+    prevItem.style.backgroundColor = ''; // Reset background color
+    prevItem.style.color = 'rgb(65, 65, 65)'; // Reset text color
+    var prevSoundWave = prevItem.querySelector('.sound-wave');
+    if (prevSoundWave) prevSoundWave.style.display = 'none'; // Hide soundwave
+  }
+
+  // Apply the styles to the new item
+  var newItem = videoList.children[newIndex];
+  if (newItem) {
+    newItem.style.backgroundColor = '#2575fc'; // Highlight background color
+    newItem.style.color = '#fff'; // Change text color
+    var newSoundWave = newItem.querySelector('.sound-wave');
+    if (newSoundWave) newSoundWave.style.display = 'inline-block'; // Show soundwave
+    var newTitle = newItem.querySelector('.listitemText').innerHTML;
+    showNotification(`Playing: ${newTitle}`)
+
+  } 
+}
+
+// Get references to the elements
+var loadVideoBtn = document.getElementById("loadVideoBtn");
+var loadVideoUrl = document.getElementById("loadVideoUrl");
+var urlInput = document.getElementById("urlInput");
+var urlField = document.getElementById("urlfeild");
+
+var showUrlField = false;
+urlField.style.display = showUrlField ? "block" : "none";
+
+// Toggle the visibility of the URL input field
+// Get modal elements
+var urlModal = document.getElementById('urlModal');
+var closeModalBtn = document.getElementById('closeModal');
+
+// Show modal when Load Video URL is clicked
+loadVideoBtn.addEventListener('click', function() {
+    urlModal.classList.add('show');
+});
+
+// Close modal when close button is clicked
+closeModalBtn.addEventListener('click', function() {
+    urlModal.classList.remove('show');
+});
+
+// Close modal when clicking outside
+urlModal.addEventListener('click', function(e) {
+    if (e.target === urlModal) {
+        urlModal.classList.remove('show');
+    }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && urlModal.classList.contains('show')) {
+        urlModal.classList.remove('show');
+    }
+});
+
+// Load the video from URL
+// Load the video from URL
+loadVideoUrl.addEventListener("click", function() {
+  var url = urlInput.value;
+  if (url) {
+    // Check if the URL is a YouTube link
+    var videoId = getYouTubeVideoID(url);
+    formattedUrl = url.replace(/\.mp4.*$/, '.mp4');
+    if (videoId) {
+      var videoUrl = 'https://www.youtube.com/watch?v=' + videoId;
+      player.src({ src: videoUrl, type: 'video/youtube' }); // Load YouTube video
+      player.load();
+      player.play();
+      showNotification('Playing: ' + url);
+    } else if (formattedUrl.endsWith('.mp4')) { // Check if it's a direct MP4 link
+      player.src({ src: url, type: 'video/mp4' }); // Load MP4 video
+      player.load();
+      player.play();
+      showNotification('Playing: ' + url);
+    } else {
+      alert('Invalid video URL. Please enter a valid YouTube or MP4 link.');
+    }
+  } else {
+    alert('Please enter a video URL.');
+  }
+});
+
+function getYouTubeVideoID(url) {
+    const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^&\n]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+}
+
+// setInterval(function() {
+//   console.log("Currently focused element:", document.activeElement);
+// }, 1000); // Logs every 1 second
+
+document.addEventListener("focusin", function (event) {
+  const blockedElements = [
+    document.getElementById("my-video_youtube_api"),
+    document.querySelector("#my-video .vjs-fullscreen-control"),
+    document.querySelector("#my-video .vjs-volume-panel"),
+    document.querySelector("#my-video .vjs-picture-in-picture-control"),
+    document.querySelector("#my-video .vjs-play-control"),
+    document.querySelector("#my-video .vjs-mute-control"),
+
+  ];
+
+  if (blockedElements.includes(event.target)) {
+    console.log("Blocked element focused, shifting focus...");
+    
+    // Move focus to body to prevent unwanted interactions
+    setTimeout(() => {
+      document.body.focus();
+      if (document.activeElement) {
+        document.activeElement.blur();
+      }
+      console.log("Focus moved to body");
+    }, 50);
+  }
+});
+
+
+
+
+
+
+
+
+function formatSpeed(speed) {
+  return speed.toFixed(1);
+}
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannon Defense Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #87CEEB; /* Sky blue */
+    }
+    canvas {
+      display: block;
+    }
+    #health-bar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 200px;
+      height: 20px;
+      background-color: red;
+      border: 2px solid black;
+    }
+    #health {
+      width: 100%;
+      height: 100%;
+      background-color: green;
+    }
+  </style>
+</head>
+<body>
+  <div id="health-bar">
+    <div id="health"></div>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Set canvas dimensions
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Game variables
+    const groundHeight = 50;
+    let cannonHealth = 100;
+    let gameOver = false;
+
+    // Cannon properties
+    const cannon = {
+      x: 50,
+      y: canvas.height - groundHeight - 30,
+      width: 40,
+      height: 30,
+      color: 'gray',
+      angle: 0, // Angle of the cannon
+      projectiles: []
+    };
+
+    // Projectile properties
+    const gravity = 0.2; // Gravity affecting projectiles
+
+    // Enemy properties
+    const enemies = [];
+    const enemySpeed = 2;
+    const spawnInterval = 1000; // Spawn an enemy every second
+
+    // Mouse position
+    let mouseX = 0;
+    let mouseY = 0;
+
+    // Spacebar state
+    let spacePressed = false;
+
+    // Health bar
+    const healthBar = document.getElementById('health');
+    const maxHealth = 100;
+
+    // Event listeners for mouse movement
+    canvas.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+
+      // Calculate cannon angle based on mouse position
+      const dx = mouseX - cannon.x;
+      const dy = mouseY - cannon.y;
+      cannon.angle = Math.atan2(dy, dx);
+    });
+
+    // Event listeners for shooting
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') spacePressed = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.code === 'Space') spacePressed = false;
+    });
+
+    // Draw ground
+    function drawGround() {
+      ctx.fillStyle = 'green';
+      ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+    }
+
+    // Draw cannon
+    function drawCannon() {
+      ctx.save();
+      ctx.translate(cannon.x + cannon.width / 2, cannon.y + cannon.height / 2);
+      ctx.rotate(cannon.angle);
+
+      // Draw cannon body
+      ctx.fillStyle = cannon.color;
+      ctx.fillRect(-cannon.width / 2, -cannon.height / 2, cannon.width, cannon.height);
+
+      ctx.restore();
+    }
+
+    // Draw projectiles
+    function drawProjectiles() {
+      cannon.projectiles.forEach((proj, index) => {
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Update projectile position with gravity
+        proj.x += proj.vx;
+        proj.vy += gravity; // Apply gravity
+        proj.y += proj.vy;
+
+        // Remove projectile if it goes off-screen
+        if (proj.y > canvas.height || proj.x > canvas.width || proj.x < 0) {
+          cannon.projectiles.splice(index, 1);
+        }
+      });
+    }
+
+    // Spawn enemies
+    function spawnEnemy() {
+      const type = Math.random() < 0.5 ? 'tank' : 'plane'; // Randomly spawn tank or plane
+      const enemy = {
+        type,
+        x: canvas.width,
+        y: type === 'tank' ? canvas.height - groundHeight - 20 : 100,
+        width: type === 'tank' ? 40 : 60,
+        height: type === 'tank' ? 20 : 20,
+        color: type === 'tank' ? 'brown' : 'blue',
+        speed: enemySpeed
+      };
+      enemies.push(enemy);
+    }
+
+    // Draw enemies
+    function drawEnemies() {
+      enemies.forEach((enemy, index) => {
+        ctx.fillStyle = enemy.color;
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+
+        // Move enemy
+        enemy.x -= enemy.speed;
+
+        // Remove enemy if it goes off-screen
+        if (enemy.x + enemy.width < 0) {
+          enemies.splice(index, 1);
+        }
+
+        // Check collision with cannon
+        if (
+          enemy.x < cannon.x + cannon.width &&
+          enemy.x + enemy.width > cannon.x &&
+          enemy.y < cannon.y + cannon.height &&
+          enemy.y + enemy.height > cannon.y
+        ) {
+          cannonHealth -= 10; // Reduce cannon health
+          enemies.splice(index, 1); // Remove enemy
+        }
+      });
+    }
+
+    // Check projectile-enemy collisions
+    function checkCollisions() {
+      cannon.projectiles.forEach((proj, pIndex) => {
+        enemies.forEach((enemy, eIndex) => {
+          if (
+            proj.x < enemy.x + enemy.width &&
+            proj.x > enemy.x &&
+            proj.y < enemy.y + enemy.height &&
+            proj.y > enemy.y
+          ) {
+            // Remove projectile and enemy on collision
+            cannon.projectiles.splice(pIndex, 1);
+            enemies.splice(eIndex, 1);
+          }
+        });
+      });
+    }
+
+    // Update health bar
+    function updateHealthBar() {
+      healthBar.style.width = `${(cannonHealth / maxHealth) * 100}%`;
+    }
+
+    // Game loop
+    function gameLoop() {
+      if (gameOver) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw elements
+      drawGround();
+      drawCannon();
+      drawProjectiles();
+      drawEnemies();
+
+      // Check collisions
+      checkCollisions();
+
+      // Shoot projectile if space is pressed
+      if (spacePressed) {
+        // Calculate distance between cannon and mouse
+        const dx = mouseX - cannon.x;
+        const dy = mouseY - cannon.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Normalize direction vector
+        const angle = Math.atan2(dy, dx);
+        const speedFactor = Math.min(distance / 100, 10); // Scale speed based on distance
+        const baseSpeed = 5 + speedFactor; // Base speed + scaled speed
+
+        // Adjust vertical velocity for upward shots
+        const upwardPower = angle < 0 ? Math.abs(angle) * 5 : 1; // Increase upward power
+        const vx = Math.cos(angle) * baseSpeed;
+        const vy = Math.sin(angle) * baseSpeed * upwardPower;
+
+        // Add new projectile
+        cannon.projectiles.push({
+          x: cannon.x + cannon.width / 2,
+          y: cannon.y + cannon.height / 2,
+          vx: vx,
+          vy: vy
+        });
+
+        spacePressed = false; // Prevent multiple shots
+      }
+
+      // Update health bar
+      updateHealthBar();
+
+      // Check game over condition
+      if (cannonHealth <= 0) {
+        gameOver = true;
+        alert('Game Over! You lost.');
+        return;
+      }
+
+      // Request next frame
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Start spawning enemies
+    setInterval(spawnEnemy, spawnInterval);
+
+    // Start game loop
+    gameLoop();
+  </script>
+</body>
+</html>

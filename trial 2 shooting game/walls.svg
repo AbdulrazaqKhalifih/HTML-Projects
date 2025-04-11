@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <!-- Outer Walls -->
+  <rect x="100" y="100" width="560" height="20" fill="brown" />
+  <rect x="100" y="100" width="20" height="420" fill="brown" />
+  <rect x="660" y="100" width="20" height="500" fill="brown" />
+  <rect x="100" y="580" width="560" height="20" fill="brown" />
+
+  <!-- Inner Walls -->
+  <rect x="300" y="120" width="20" height="120" fill="brown" />
+  <rect x="500" y="120" width="20" height="120" fill="brown" />
+  <rect x="400" y="280" width="20" height="140" fill="brown" />
+  <rect x="250" y="400" width="20" height="120" fill="brown" />
+  <rect x="550" y="400" width="20" height="120" fill="brown" />
+</svg>

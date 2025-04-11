@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary to Decimal Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+        }
+        textarea, button {
+            font-size: 18px;
+            padding: 10px;
+            margin: 10px;
+        }
+        #result {
+            font-size: 20px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Binary to Decimal Converter</h1>
+    <label for="binaryInput">Enter Binary Numbers (one per line):</label><br>
+    <textarea id="binaryInput" rows="10" cols="30" placeholder="Enter binary numbers, one per line"></textarea><br>
+    <button onclick="convertToDecimal()">Convert</button>
+    <div id="result"></div>
+
+    <script>
+        // Function to convert binary numbers to decimal
+        function convertToDecimal() {
+            var binaryInput = document.getElementById('binaryInput').value; // Get the input text
+            var resultDiv = document.getElementById('result');
+            
+            // Split input into lines
+            var binaryList = binaryInput.split('\n');
+            var decimalList = [];
+            
+            // Process each line
+            for (var i = 0; i < binaryList.length; i++) {
+                var binary = binaryList[i].trim(); // Trim any extra spaces
+                if (binary === '') continue; // Skip empty lines
+                
+                // Validate if the binary number contains only 0s and 1s
+                if (/[^01]/.test(binary)) {
+                    decimalList.push("Invalid input: " + binary);
+                } else {
+                    // Convert binary to decimal and add to result list
+                    var decimal = parseInt(binary, 2);
+                    decimalList.push(decimal);
+                }
+            }
+            
+            // Display the result as a list of decimal numbers
+            resultDiv.innerHTML = "Decimal Equivalents:<br>" + decimalList.join('<br>');
+        }
+    </script>
+</body>
+</html>

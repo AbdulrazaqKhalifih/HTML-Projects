@@ -1,0 +1,90 @@
+/* General Styles */
+body {
+    background: #e0e0e0;
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  
+  .container {
+    display: flex;
+    gap: 20px;
+    background: #f8f8f8;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  .vertical-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  /* Buttons and Inputs */
+  .fancy-button {
+    background: linear-gradient(135deg, #4A90E2, #002F5E);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 14px;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  
+  .fancy-button:hover {
+    background: linear-gradient(135deg, #002F5E, #4A90E2);
+  }
+  
+  .fancy-input {
+    border: 2px solid #4A90E2;
+    border-radius: 20px;
+    padding: 8px 15px;
+    font-size: 14px;
+    outline: none;
+  }
+  
+  /* Video Player */
+  .video-container {
+    position: relative;
+    width: 810px;
+    height: 444px;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  .video-js {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 15px;
+    background: black;
+  }
+  
+  /* Playlist */
+  #videoList {
+    list-style: none;
+    padding: 0;
+    width: 100%;
+  }
+  
+  #videoList li {
+    background: #4A90E2;
+    color: white;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: 0.3s;
+  }
+  
+  #videoList li:hover {
+    background: #002F5E;
+  }
+  

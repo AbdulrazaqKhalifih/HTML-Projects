@@ -1,0 +1,670 @@
+<script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-analytics.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged,
+      signInWithPopup,
+      GoogleAuthProvider,
+      signInWithRedirect,
+      getRedirectResult,
+      sendPasswordResetEmail,
+      sendEmailVerification,
+      isSignInWithEmailLink, 
+      signInWithEmailLink,
+      sendSignInLinkToEmail,
+      fetchSignInMethodsForEmail,
+      linkWithPopup,
+      EmailAuthProvider
+    } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+    import { getDatabase, ref, set, get, child, update } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-database.js";
+  
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWJCI1MpcZ-BHcBao0EeWcbLB3nKKygcU",
+      authDomain: "islam-map-782f1.firebaseapp.com",
+      projectId: "islam-map-782f1",
+      storageBucket: "islam-map-782f1.appspot.com",
+      messagingSenderId: "706140588471",
+      appId: "1:706140588471:web:86c614fb0bb1f3c47b8032",
+      measurementId: "G-7H49Y83TP8"
+    };
+  
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+    const provider = new GoogleAuthProvider();
+
+
+
+function setUpAuthenication(){
+
+function googleSignIn(){
+    document.getElementById('google-sign-in-btn').addEventListener('click', function() {
+    signInWithPopup(auth, provider)
+        .then((result) => {
+            const database = getDatabase(app);
+            const credential = GoogleAuthProvider.credentialFromResult(result);
+            const token = credential.accessToken;
+            const user = result.user;
+
+//===========================================================================
+            // Check if the user exists in the database before setting data
+            // If signed in with google, data doeosn't overwrite
+//==========================================================================
+            const userRef = ref(database, 'users/' + user.uid);
+            get(userRef).then((snapshot) => {
+                if (snapshot.exists()) {
+
+//==========================================================================
+            //If user already exist 
+//==========================================================================
+                    console.log('User already exists in database');
+                    const userData = snapshot.val();
+
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (If user already exist )
+//==========================================================================
+//==========================================================================
+            //Check and update image
+//==========================================================================
+                    if (userData.photoURL === "https://blogger.googleusercontent.com/img/a/AVvXsEiDYB0OwWEbZLW1im8SW4ayXH7PSew5lPVKo6ccAejuAwH_ysuZ_tTdGOmvv_RBGl38KGi-9unzIee9zxcxhFYyXkclXMvv5muxEIyWxFU8-26vnuH_Pt98U3sLspWQAs61QieQnBfYPtIHR6I2HlT4wU8PYRsIGp3mVqzyff06NlC9-CCob-2u4j1aOaEL=s1280" || userData.photoURL === "" ) {
+                        update(userRef, {
+                          photoURL: user.photoURL
+                        }).then(() => {
+                            console.log('User image updated');
+                        }).catch((error) => {
+                            console.error('Error updating user image:', error);
+                        });
+                    }
+
+//==========================================================================
+            //Check and update name
+//==========================================================================
+                    if (userData.displayName === "") {
+                        update(userRef, {
+                            displayName: user.displayName
+                        }).then(() => {
+                            console.log('Username updated');
+                        }).catch((error) => {
+                            console.error('Error updating user name:', error);
+                        });
+                    } 
+
+//==========================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (If user already exist )
+//==========================================================================
+//==========================================================================
+            //If user doesn't exist
+//==========================================================================
+                } else {
+                    console.log('User does not exist in database');
+
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (If user doesn't exist )
+//==========================================================================
+//==========================================================================
+            //Save new inputed data to database (default gender and language)
+            //For displayName, email, and photoURL use the ones from 
+            //user's google account
+//==========================================================================
+                    set(userRef, {
+                        email: user.email,
+                        createdAt: new Date().toISOString(),
+                        displayName: user.displayName,
+                        photoURL: user.photoURL,
+                        phoneNumeber:"",
+                        dateOfBirth:"",
+                        gender: "male",
+                        language: "english",
+                        country: ""
+
+//==========================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (If user doesn't exist )
+//==========================================================================
+                    }).then(() => {
+                        console.log('User data saved to database');
+                    }).catch((error) => {
+                        console.error('Error saving user data:', error);
+                    });
+                }
+            }).catch((error) => {
+                console.error('Error checking user data:', error);
+            });
+        })
+        .catch((error) => {
+            const errorCode = error.code;
+            const errorMessage = error.message;
+            console.error('Error signing in with Google:', errorCode, errorMessage);
+            alert(errorMessage);
+            alert(errorCode);
+        });
+    });
+}
+
+function signUp(){
+    document.getElementById('sign-up-form').addEventListener('submit', function(event) {
+      event.preventDefault();
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (If sign up button is clicked)
+//==========================================================================
+//==========================================================================
+            // Getting the sign up inputted fields (with default image)
+//==========================================================================
+      const email = document.getElementById('sign-up-email').value;
+      const password = document.getElementById('sign-up-password').value;
+      const userName = document.getElementById('sign-up-name').value;
+      const photo = "https://blogger.googleusercontent.com/img/a/AVvXsEiDYB0OwWEbZLW1im8SW4ayXH7PSew5lPVKo6ccAejuAwH_ysuZ_tTdGOmvv_RBGl38KGi-9unzIee9zxcxhFYyXkclXMvv5muxEIyWxFU8-26vnuH_Pt98U3sLspWQAs61QieQnBfYPtIHR6I2HlT4wU8PYRsIGp3mVqzyff06NlC9-CCob-2u4j1aOaEL=s1280";
+  
+//==========================================================================
+            // Sign up user
+//==========================================================================
+      createUserWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+
+//==========================================================================
+            // If user is successfully signed up
+//==========================================================================
+          const user = userCredential.user;
+          console.log('Signed up:', user);
+
+//================================================================================
+            // ADD YOUR CODE BELOW THIS LINE FOR (If user is succefully signer up)
+//================================================================================
+//================================================================================
+            // Save user's inputted data to the database
+//================================================================================
+          set(ref(database, 'users/' + user.uid), {
+            displayName: userName,
+            photoURL: photo,
+            email: email,
+            createdAt: new Date().toISOString(),
+            phoneNumeber:"",
+            dateOfBirth:"",
+            gender: "male",
+            language: "english",
+            country: ""
+          });
+  
+          alert('User signed up successfully!');
+
+//================================================================================
+            // Call vertifyUserEmail() function
+//================================================================================
+          vertifyUserEmail()
+  
+//================================================================================
+            // ADD YOUR CODE ABOVE THIS LINE FOR (If user is succefully signed up)
+//================================================================================
+        })
+        .catch((error) => {
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          console.error('Error signing up:', errorCode, errorMessage);
+          alert(errorMessage);
+        });
+
+//==========================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (If sign up button is clicked)
+//==========================================================================
+    });
+}
+
+function signIn(){
+    document.getElementById('sign-in-form').addEventListener('submit', function(event) {
+      event.preventDefault();
+
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (If sign in button is clicked)
+//==========================================================================
+//==========================================================================
+            // Getting the sign in inputted fields 
+//==========================================================================
+      const email = document.getElementById('sign-in-email').value;
+      const password = document.getElementById('sign-in-password').value;
+
+//==========================================================================
+            // Sign in user
+//==========================================================================
+      signInWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+
+//==========================================================================
+            // If user is succefully signed in
+//==========================================================================
+          const user = userCredential.user;
+          console.log('Signed in:', user);
+
+//================================================================================
+            // ADD YOUR CODE BELOW THIS LINE FOR (If user is succefully signed in)
+//================================================================================
+//================================================================================
+            // Call onSignIn() function
+//================================================================================
+          onSignIn(user);
+
+//================================================================================  
+            // ADD YOUR CODE ABOVE THIS LINE FOR (If user is succefully signed in)
+//================================================================================
+        })
+        .catch((error) => {
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          console.error('Error signing in:', errorCode, errorMessage);
+          alert(errorMessage);
+        });
+
+//==========================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (If sign in button is clicked)
+//==========================================================================
+    });
+}
+
+function signOut(){
+    document.getElementById('sign-out-btn').addEventListener('click', function() {
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (If sign out button is clicked)
+//==========================================================================
+//==========================================================================
+            // Sign user out
+//==========================================================================
+      signOut(auth).then(() => {
+
+//==========================================================================
+            // If user successfully signed out
+//==========================================================================
+        console.log('Signed out');
+
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (If user successfully signed out)
+//==========================================================================
+//==========================================================================
+            // Call showSignInPage() Function
+//==========================================================================
+        showSignInPage();
+
+//==========================================================================
+            // Reset the top right profile bar to default
+//==========================================================================
+        document.getElementById('user-top-tag-sign-in').innerHTML = 'Guest';
+        document.getElementById('user-top-image-sign-in').src = 'https://blogger.googleusercontent.com/img/a/AVvXsEiDYB0OwWEbZLW1im8SW4ayXH7PSew5lPVKo6ccAejuAwH_ysuZ_tTdGOmvv_RBGl38KGi-9unzIee9zxcxhFYyXkclXMvv5muxEIyWxFU8-26vnuH_Pt98U3sLspWQAs61QieQnBfYPtIHR6I2HlT4wU8PYRsIGp3mVqzyff06NlC9-CCob-2u4j1aOaEL=s1280';
+
+//==========================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (If user successfully signed out)
+//==========================================================================
+      }).catch((error) => {
+        console.error('Error signing out:', error);
+      });
+
+//==========================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (If sign out button is clicked)
+//==========================================================================    
+    });
+}
+
+
+if(checkIfOnSignInPage()){
+
+  googleSignIn();
+  signUp();
+  signIn();
+  signOut();
+
+}
+
+}
+
+
+
+
+// Function to Set up retrieved data after sign in
+function onSignIn(user) {
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (onSignIn() function)
+//==========================================================================
+      showUserData(user.uid).then((userData) => {
+        if (userData) {
+//==========================================================================
+            // If user data exists
+//==========================================================================
+        console.log("User data exists");
+
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (If user data exists)
+//==========================================================================
+//==========================================================================
+            // Retriving all user data from database
+//==========================================================================
+          const profileName = userData.displayName;
+          const profileImageURL = userData.photoURL;
+          const profileEmail = userData.email;
+          const profilePhoneNumber = userData.phoneNumeber;
+          const profileDateOfBirth = userData.dateOfBirth;
+          const profileGender = userData.gender;
+          const profileLanguage = userData.language;
+          const profileCountry = userData.country;
+  
+//==========================================================================
+            // Update top right profile bar
+//==========================================================================
+          const userImage = document.getElementById('user-top-image-sign-in');
+          const userName = document.getElementById('user-top-tag-sign-in');
+  
+          userImage.src = profileImageURL;
+  
+          const maxLength = 15;
+          if (profileName.length > maxLength) {
+            const truncatedName = profileName.substring(0, maxLength) + '...';
+            userName.textContent = truncatedName;
+          } else {
+            userName.textContent = profileName;
+          }
+
+//==========================================================================
+            // Check if current page is user's sign in page
+//==========================================================================
+          if(checkIfOnSignInPage()){
+
+//==========================================================================
+            // ADD CODE BELOW FOR (if current page is user's sign in page) 
+//==========================================================================
+//==========================================================================
+            // Update user's profile with database user's data
+//==========================================================================
+            const profileImage = document.getElementById("profile-image");
+            const profileInputImageURL = document.getElementById("profile-input-image-url");
+            const profileInputUsername = document.getElementById("profile-input-username");
+            const profileTextEmail = document.getElementById("profile-bottom-email");
+            const phoneNumber = document.getElementById('profile-input-phone-number');
+            const dateOfBirth = document.getElementById('profile-input-date-of-birth');
+            const gender = document.getElementById('profile-input-gender');
+            const language = document.getElementById('profile-input-language');
+            const country = document.getElementById('profile-input-country');
+
+            profileImage.src = profileImageURL;
+            profileInputImageURL.value = profileImageURL;
+            profileInputUsername.value = profileName;
+            profileTextEmail.innerHTML = "Signed in as: " + profileEmail;
+            phoneNumber.value =   profilePhoneNumber;
+            dateOfBirth.value =   profileDateOfBirth;
+            gender.value =   profileGender;
+            language.value =   profileLanguage;
+            country.value =   profileCountry;
+
+//==========================================================================
+            // Call checkEmailverification() function
+//==========================================================================
+            checkEmailverification(user);
+
+//==========================================================================
+            // ADD CODE ABOVE FOR (if current page is user's sign in page) 
+//==========================================================================
+          }
+
+//==========================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (If user data exists)
+//==========================================================================
+        }
+      }).catch((error) => {
+        console.error('Error retrieving user data:', error);
+      });
+
+//=============================================================================
+            // Show User's profile and hide Sign in page call showUserProfile()
+//==============================================================================
+      showUserProfile();
+
+//==========================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (onSignIn() function)
+//==========================================================================
+    }
+
+
+// Check authentication state
+function checkAuthState () {
+    onAuthStateChanged(auth, (user) => {
+  
+//==========================================================================
+            // If Auth State Changed
+//==========================================================================
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (If Auth State Changed)
+//==========================================================================
+      if (user) {
+
+//==========================================================================
+            // If user is signed in
+//==========================================================================
+        console.log('User is signed in:', user);
+
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (If user is signed in)
+//==========================================================================
+//==========================================================================
+            // Call onSignIn() Function 
+//==========================================================================
+        onSignIn(user);
+
+//==========================================================================
+            // Check if user on Sign-In page
+//==========================================================================
+        if(checkIfOnSignInPage()){
+
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (Check if user on Sign-In page)
+//==========================================================================
+        document.getElementById("update-profile-btn").addEventListener('click', function() {
+
+//================================================================================
+            // ADD YOUR CODE BELOW THIS FOR (if update profile button is clicked)
+//================================================================================
+//==========================================================================
+            // Update user's date with inputted data
+//==========================================================================
+        var profileInputImageURL = document.getElementById("profile-input-image-url").value;
+        const profileInputUsername = document.getElementById("profile-input-username").value;
+        const phoneNumber = document.getElementById('profile-input-phone-number').value;
+        const dateOfBirth = document.getElementById('profile-input-date-of-birth').value;
+        const gender = document.getElementById('profile-input-gender').value;
+        const language = document.getElementById('profile-input-language').value;
+        const country = document.getElementById('profile-input-country').value;
+        const updateProfileBtn = document.getElementById("update-profile-btn");
+        if(profileInputImageURL === ""){
+           profileInputImageURL= "https://blogger.googleusercontent.com/img/a/AVvXsEiDYB0OwWEbZLW1im8SW4ayXH7PSew5lPVKo6ccAejuAwH_ysuZ_tTdGOmvv_RBGl38KGi-9unzIee9zxcxhFYyXkclXMvv5muxEIyWxFU8-26vnuH_Pt98U3sLspWQAs61QieQnBfYPtIHR6I2HlT4wU8PYRsIGp3mVqzyff06NlC9-CCob-2u4j1aOaEL=s1280"
+        }
+
+        // Save user data to the database
+        update(ref(database, 'users/' + user.uid), {
+        displayName: profileInputUsername,
+        photoURL: profileInputImageURL,
+        phoneNumeber: phoneNumber,
+        dateOfBirth: dateOfBirth,
+        gender: gender,
+        language:language,
+        country: country
+        });
+
+//==========================================================================
+            // Call checkEmailverification() Function
+//==========================================================================
+        checkEmailverification(user);
+
+//==========================================================================
+            // Change button text after changes are saved
+//==========================================================================
+        updateProfileBtn.innerHTML = "Changes Saved!";
+
+//================================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (if update profile button is clicked)
+//================================================================================
+        });
+
+//==========================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (Check if user on Sign-In page)
+//==========================================================================
+        }
+
+//==========================================================================
+            // ADD YOUR CODE ABOVE THIS FOR (If user is signed in)
+//==========================================================================
+      } 
+      else {
+//==========================================================================
+            // If user isn't signed in
+//==========================================================================
+        console.log('No user is signed in');
+
+//==========================================================================
+            // ADD YOUR CODE BELOW THIS FOR (If user isn't signed in)
+//==========================================================================
+//==========================================================================
+            // Call showSignInPage() Function
+//==========================================================================
+        showSignInPage();
+
+
+      }
+    });
+  }  
+
+ 
+
+function showUserProfile(){
+  if (checkIfOnSignInPage()){
+    const toggleSignContainer = document.getElementById("toggle-buttons");
+    const signInFormContainer = document.getElementById("sign-in-forms-container");
+    const signInWithGoogleBtn = document.getElementById("google-sign-in-btn");
+    const accountProfile = document.getElementById("account-profile-page");
+    toggleSignContainer.style.display = 'none';
+    signInFormContainer.style.display = 'none';
+    signInWithGoogleBtn.style.display = 'none';
+    accountProfile.style.display = 'block';
+    checkEmailverification(user);
+  }
+}
+
+function showSignInPage(){
+  if (checkIfOnSignInPage()){
+    const toggleSignContainer = document.getElementById("toggle-buttons");
+    const signInFormContainer = document.getElementById("sign-in-forms-container");
+    const signInWithGoogleBtn = document.getElementById("google-sign-in-btn");
+    const accountProfile = document.getElementById("account-profile-page");
+    toggleSignContainer.style.display = 'block';
+    signInFormContainer.style.display = 'block';
+    signInWithGoogleBtn.style.display = 'block';
+    accountProfile.style.display = 'none';
+    resetEmailPassword()
+  }
+}
+
+function checkIfOnSignInPage(){
+
+try{
+      const profileImage = document.getElementById("profile-image");
+      const profileInputImageURL = document.getElementById("profile-input-image-url");
+      const profileInputUsername = document.getElementById("profile-input-username");
+      const profileTextEmail = document.getElementById("profile-bottom-email");
+      const phoneNumber = document.getElementById('profile-input-phone-number');
+      const dateOfBirth = document.getElementById('profile-input-date-of-birth');
+      const gender = document.getElementById('profile-input-gender');
+      const language = document.getElementById('profile-input-language');
+      const country = document.getElementById('profile-input-country');
+      const signUpEmail = document.getElementById('sign-up-email');
+      const signUpPassword = document.getElementById('sign-up-password');
+      const signUpUsername = document.getElementById('sign-up-name');
+      const signInEmail = document.getElementById('sign-in-email').value;
+      const signInPassword = document.getElementById('sign-in-password').value;
+
+      return true
+
+} catch(error) {
+
+      consol.log("Not in sign-in Page: " + error)
+      return false
+}
+}
+
+    // Show user data
+    function showUserData(uid) {
+      return new Promise((resolve, reject) => {
+        const dbRef = ref(getDatabase());
+        get(child(dbRef, `users/${uid}`))
+          .then((snapshot) => {
+            if (snapshot.exists()) {
+              console.log(snapshot.val());
+              resolve(snapshot.val());
+            } else {
+              console.log("No data available");
+              resolve(null);
+            }
+          })
+          .catch((error) => {
+            console.error(error);
+            reject(error);
+          });
+      });
+    }
+
+    function resetEmailPassword (){
+        const reset = document.getElementById("forgot-password-sign-in");
+        reset.addEventListener("click", function(event){
+            event.preventDefault()
+            const email = document.getElementById("sign-in-email").value;
+            sendPasswordResetEmail(auth, email)
+                .then(() => {
+                    alert("Email Sent");
+                    // Password reset email sent!
+                    // ..
+                })
+                .catch((error) => {
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                    alert(errorMessage)
+                    // ..
+                });
+        });
+    }
+
+    function vertifyUserEmail(){
+        sendEmailVerification(auth.currentUser)
+        .then(() => {
+          alert("email verification sent!")
+        })
+    }
+
+    function checkEmailverification(user){
+      var vertified = user.emailVerified;
+
+
+      if(checkIfOnSignInPage()){
+        const emailVertifiedText = document.getElementById("profile-email-verification-text");
+        const sendVerificationBtn = document.getElementById("profile-send-email-verification-button");
+        
+        if(vertified){
+          emailVertifiedText.innerHTML = "Email Verified ✓"
+          sendVerificationBtn.style.display = "none"
+
+        }else{
+          emailVertifiedText.innerHTML = "Email Not Verified,"
+          sendVerificationBtn.style.display = "block"
+        }
+
+        document.getElementById('profile-send-email-verification-button').addEventListener('click', function() {
+            vertifyUserEmail()
+        });
+
+      }
+    }
+
+
+    checkAuthState();
+    setUpAuthenication();
+
+  </script>
+  

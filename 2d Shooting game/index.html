@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Shooting Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #333;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Set canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 30,
+            color: "lime",
+            faceColor: "black",
+            speed: 5
+        };
+
+        const environment = {
+            xOffset: 0,
+            yOffset: 0
+        };
+
+        const walls = [
+    // Outer walls (larger house)
+    { x: -400, y: -400, width: 800, height: 20 },  // Top wall
+    { x: -400, y: 400, width: 700, height: 20 },   // Bottom wall
+    { x: -400, y: -100, width: 20, height: 800 },  // Left wall
+    { x: 400, y: -400, width: 20, height: 800 },   // Right wall
+
+
+    // Room 1 (Living Room)
+    { x: -200, y: -400, width: 20, height: 200 },  // Left wall of living room
+    { x: 0, y: -400, width: 20, height: 100 },   // Right wall of living room
+    { x: -200, y: -200, width: 220, height: 20 },  // Top wall of living room
+    { x: -200, y: -200, width: 20, height: 20 },   // Door to the Living Room from the entrance (left side)
+    
+    // Room 2 (Bedroom 1)
+    { x: -200, y: -200, width: 20, height: 100 },  // Left wall of bedroom 1
+    { x: 0, y: -200, width: 20, height: 200 },   // Right wall of bedroom 1
+    { x: -200, y: 0, width: 220, height: 20 },  // Top wall of bedroom 1
+    { x: 0, y: -200, width: 20, height: 20 },   // Door from Living Room to Bedroom 1
+
+    // Room 3 (Bedroom 2)
+    { x: 0, y: -400, width: 20, height: 200 },  // Left wall of bedroom 2
+    { x: 200, y: -400, width: 20, height: 100 },   // Right wall of bedroom 2
+    { x: 0, y: -200, width: 220, height: 20 },  // Top wall of bedroom 2
+    { x: 0, y: -200, width: 20, height: 20 },  // Door to Bedroom 2 from Living Room
+
+    // Room 4 (Kitchen)
+    { x: -200, y: 0, width: 20, height: 200 },  // Left wall of kitchen
+    { x: 0, y: 0, width: 20, height: 200 },   // Right wall of kitchen
+    { x: -200, y: 200, width: 220, height: 20 },  // Top wall of kitchen
+    { x: 0, y: 0, width: 20, height: 20 },   // Door from Bedroom 2 to Kitchen
+
+    // Room 5 (Bathroom)
+    { x: 0, y: 200, width: 20, height: 100 },  // Left wall of bathroom
+    { x: 100, y: 200, width: 20, height: 100 },   // Right wall of bathroom
+    { x: 0, y: 300, width: 120, height: 20 },  // Top wall of bathroom
+    { x: 0, y: 200, width: 20, height: 20 },   // Door from Kitchen to Bathroom
+
+    // Room 6 (Dining Room)
+    { x: 200, y: 200, width: 20, height: 100 },  // Left wall of dining room
+    { x: 300, y: 200, width: 20, height: 100 },   // Right wall of dining room
+    { x: 200, y: 300, width: 120, height: 20 },  // Top wall of dining room
+    { x: 200, y: 200, width: 20, height: 20 },   // Door from Bathroom to Dining Room
+
+    // Room 7 (Storage Room)
+    { x: 0, y: 300, width: 20, height: 100 },  // Left wall of storage room
+    { x: 100, y: 300, width: 20, height: 100 },   // Right wall of storage room
+    { x: 0, y: 400, width: 120, height: 20 },   // Top wall of storage room
+    { x: 100, y: 300, width: 20, height: 20 }   // Door from Dining Room to Storage Room
+];
+
+
+
+
+        let mouseAngle = 0;
+
+        // Movement keys
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+
+        // Handle key presses
+        window.addEventListener("keydown", (e) => {
+            if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+        });
+
+        window.addEventListener("keyup", (e) => {
+            if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+        });
+
+        // Track mouse movement
+        window.addEventListener("mousemove", (e) => {
+            const dx = e.clientX - player.x;
+            const dy = e.clientY - player.y;
+            mouseAngle = Math.atan2(dy, dx);
+        });
+
+        function drawPlayer() {
+            // Draw the player's body
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+
+            // Draw the face
+            const eyeOffsetX = Math.cos(mouseAngle) * player.radius * 0.5;
+            const eyeOffsetY = Math.sin(mouseAngle) * player.radius * 0.5;
+
+            ctx.fillStyle = player.faceColor;
+            ctx.beginPath();
+            ctx.arc(player.x + eyeOffsetX - 5, player.y + eyeOffsetY - 5, 5, 0, Math.PI * 2); // Left eye
+            ctx.arc(player.x + eyeOffsetX + 5, player.y + eyeOffsetY - 5, 5, 0, Math.PI * 2); // Right eye
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawWalls() {
+            ctx.fillStyle = "gray";
+            walls.forEach((wall) => {
+                ctx.fillRect(wall.x + environment.xOffset, wall.y + environment.yOffset, wall.width, wall.height);
+            });
+        }
+
+        function checkCollision() {
+            for (let wall of walls) {
+                const wallLeft = wall.x + environment.xOffset;
+                const wallRight = wallLeft + wall.width;
+                const wallTop = wall.y + environment.yOffset;
+                const wallBottom = wallTop + wall.height;
+
+                const playerLeft = player.x - player.radius;
+                const playerRight = player.x + player.radius;
+                const playerTop = player.y - player.radius;
+                const playerBottom = player.y + player.radius;
+
+                if (
+                    playerRight > wallLeft &&
+                    playerLeft < wallRight &&
+                    playerBottom > wallTop &&
+                    playerTop < wallBottom
+                ) {
+                    return true; // Collision detected
+                }
+            }
+            return false;
+        }
+
+        function updateEnvironment() {
+            const prevXOffset = environment.xOffset;
+            const prevYOffset = environment.yOffset;
+
+            if (keys.ArrowUp) environment.yOffset += player.speed;
+            if (keys.ArrowDown) environment.yOffset -= player.speed;
+            if (keys.ArrowLeft) environment.xOffset += player.speed;
+            if (keys.ArrowRight) environment.xOffset -= player.speed;
+
+            if (checkCollision()) {
+                environment.xOffset = prevXOffset;
+                environment.yOffset = prevYOffset;
+            }
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Update environment
+            updateEnvironment();
+
+            // Draw environment
+            drawWalls();
+
+            // Draw player
+            drawPlayer();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game loop
+        gameLoop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Top-Down 2D Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+        /* Style for the div */
+        #coordinates {
+      position: absolute;
+      padding: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 24px;
+      border-radius: 5px;
+      pointer-events: none; /* Prevents the div from interfering with mouse events */
+      display: none; /* Initially hidden */
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="coordinates"></div>
+
+  <script src="maps.js"></script>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Set canvas size to fill the window
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Player settings
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      width: 30,
+      height: 30,
+      speed: 15,
+      angle: 0,
+      health: 100, // Player health
+    };
+
+    // Mouse position
+    let mouseX = canvas.width / 2;
+    let mouseY = canvas.height / 2;
+
+    // Bullets array
+    const bullets = [];
+
+    // Villain settings
+    const villains = [];
+    const villainSpeed = 2.5;
+    const villainHealth = 50;
+
+    // Bombs array and cooldown tracking
+    const bombs = [];
+    let lastBombTime = 0; // Track the last time a bomb was planted
+
+    // Walls array (parsed from SVG)
+    let walls = [];
+
+    // Key states for movement and shooting
+    const keys = {};
+
+    // Offset for the environment (background and walls)
+    const offset = { x: -220, y: -50 };
+
+    // Embedded SVG content
+    const svgContent = airPort;
+
+    // Parse the SVG content
+    function parseSVG(svgText) {
+  const parser = new DOMParser();
+  const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+  const shapes = svgDoc.querySelectorAll('rect, circle, line, path, polygon, ellipse, image'); // Include <image>
+  walls = []; // Reset walls array
+
+  shapes.forEach((shape) => {
+    const tagName = shape.tagName.toLowerCase(); // Get the type of shape
+    let wallData = null;
+
+    switch (tagName) {
+      case 'rect':
+        wallData = {
+          type: 'rect',
+          x: parseFloat(shape.getAttribute('x')),
+          y: parseFloat(shape.getAttribute('y')),
+          width: parseFloat(shape.getAttribute('width')),
+          height: parseFloat(shape.getAttribute('height')),
+          fill: shape.getAttribute('fill') || 'none',
+        };
+        break;
+
+      case 'circle':
+        wallData = {
+          type: 'circle',
+          cx: parseFloat(shape.getAttribute('cx')),
+          cy: parseFloat(shape.getAttribute('cy')),
+          r: parseFloat(shape.getAttribute('r')),
+          fill: shape.getAttribute('fill') || 'none',
+        };
+        break;
+
+      case 'line':
+        wallData = {
+          type: 'line',
+          x1: parseFloat(shape.getAttribute('x1')),
+          y1: parseFloat(shape.getAttribute('y1')),
+          x2: parseFloat(shape.getAttribute('x2')),
+          y2: parseFloat(shape.getAttribute('y2')),
+          stroke: shape.getAttribute('stroke') || 'none',
+          strokeWidth: parseFloat(shape.getAttribute('stroke-width')) || 1,
+        };
+        break;
+
+      case 'path':
+        wallData = {
+          type: 'path',
+          d: shape.getAttribute('d'),
+          fill: shape.getAttribute('fill') || 'none',
+          stroke: shape.getAttribute('stroke') || 'none',
+          strokeWidth: parseFloat(shape.getAttribute('stroke-width')) || 1,
+        };
+        break;
+
+      case 'polygon':
+        wallData = {
+          type: 'polygon',
+          points: shape.getAttribute('points'), // Points are stored as a string
+          fill: shape.getAttribute('fill') || 'none',
+          stroke: shape.getAttribute('stroke') || 'none',
+          strokeWidth: parseFloat(shape.getAttribute('stroke-width')) || 1,
+        };
+        break;
+
+      case 'ellipse':
+        wallData = {
+          type: 'ellipse',
+          cx: parseFloat(shape.getAttribute('cx')),
+          cy: parseFloat(shape.getAttribute('cy')),
+          rx: parseFloat(shape.getAttribute('rx')),
+          ry: parseFloat(shape.getAttribute('ry')),
+          fill: shape.getAttribute('fill') || 'none',
+        };
+        break;
+
+      case 'image': // Handle <image> elements
+        const img = new Image();
+        const href = shape.getAttribute('href') || shape.getAttribute('xlink:href');
+        img.src = href;
+
+        wallData = {
+          type: 'image',
+          x: parseFloat(shape.getAttribute('x')),
+          y: parseFloat(shape.getAttribute('y')),
+          width: parseFloat(shape.getAttribute('width')),
+          height: parseFloat(shape.getAttribute('height')),
+          href: href,
+          image: img, // Store the preloaded image
+        };
+
+        img.onerror = () => {
+          console.warn(`Failed to load image: ${href}`);
+        };
+        break;
+
+      default:
+        console.warn(`Unsupported shape type: ${tagName}`);
+        return; // Skip unsupported shapes
+    }
+
+    // Add the parsed shape data to the walls array
+    if (wallData) walls.push(wallData);
+  });
+
+  console.log('Parsed walls:', walls);
+}
+    
+    // Event listeners for key presses
+    window.addEventListener('keydown', (e) => {
+      keys[e.key.toLowerCase()] = true;
+
+      // Plant a bomb when 'shift' is pressed
+      if (e.shiftKey) {
+        const currentTime = Date.now();
+        if (currentTime - lastBombTime >= 5000) { // 5-second cooldown
+          bombs.push({
+            x: player.x - offset.x,
+            y: player.y - offset.y,
+            plantedTime: currentTime, // Track when the bomb was planted
+          });
+          lastBombTime = currentTime; // Update the last bomb planting time
+        }
+      }
+
+      // Shooting when spacebar is pressed
+      if (e.code === 'Space') {
+        const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+        bullets.push({
+          x: player.x,
+          y: player.y,
+          dx: Math.cos(angle) * 10,
+          dy: Math.sin(angle) * 10,
+          width: 5,
+          height: 5,
+          isPlayerBullet: true,
+        });
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    const coordinatesDiv = document.getElementById('coordinates');
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+
+      // Update the content of the div with mouse coordinates
+      coordinatesDiv.textContent = `X: ${e.clientX + 220  - offset.x}, Y: ${e.clientY + 50 - offset.y}`;
+
+      // Position the div to the right of the mouse
+      coordinatesDiv.style.left = `${e.clientX + 20}px`; // 10px offset to the right
+      coordinatesDiv.style.top = `${e.clientY }px`;
+
+      // Show the div
+      coordinatesDiv.style.display = 'block';
+      
+    });
+
+
+    // Hide the div when the mouse leaves the window
+    window.addEventListener('mouseout', () => {
+      coordinatesDiv.style.display = 'none';
+    });
+
+    // Check if two rectangles collide
+    function checkCollision(rect1, rect2) {
+      return (
+        rect1.x < rect2.x + rect2.width &&
+        rect1.x + rect1.width > rect2.x &&
+        rect1.y < rect2.y + rect2.height &&
+        rect1.y + rect1.height > rect2.y
+      );
+    }
+
+    // Add a villain
+    function addVillain(x, y) {
+      villains.push({
+        x,
+        y,
+        width: 30,
+        height: 30,
+        health: villainHealth,
+        lastShotTime: 0, // Track time of last shot
+        dx: Math.random() < 0.5 ? -villainSpeed : villainSpeed, // Initial random horizontal direction
+        dy: Math.random() < 0.5 ? -villainSpeed : villainSpeed, // Initial random vertical direction
+      });
+    }
+
+    // Draw health bar
+    function drawHealthBar(x, y, health, maxHealth) {
+      ctx.fillStyle = 'red';
+      ctx.fillRect(x - 20, y - 20, 40, 5); // Background bar
+      ctx.fillStyle = 'green';
+      ctx.fillRect(x - 20, y - 20, (health / maxHealth) * 40, 5); // Health bar
+
+    }
+
+    // Update function
+    function update() {
+      // Temporary offsets for collision detection
+      let tempOffsetX = offset.x;
+      let tempOffsetY = offset.y;
+
+      // Collision detection for horizontal movement (A/D keys)
+      if (keys['a'] || keys['d']) {
+        if (keys['a']) tempOffsetX += player.speed;
+        if (keys['d']) tempOffsetX -= player.speed;
+
+        const playerRect = {
+          x: player.x - player.width / 2,
+          y: player.y - player.height / 2,
+          width: player.width,
+          height: player.height,
+        };
+
+        let horizontalCollisionDetected = false;
+        walls.forEach((wall) => {
+          const wallRect = {
+            x: wall.x + tempOffsetX,
+            y: wall.y + offset.y,
+            width: wall.width,
+            height: wall.height,
+          };
+          if (checkCollision(playerRect, wallRect)) {
+            horizontalCollisionDetected = true;
+          }
+        });
+
+        if (true || !horizontalCollisionDetected) { //TEMP
+          offset.x = tempOffsetX;
+        } else {
+          tempOffsetX = offset.x; // Reset horizontal offset to prevent diagonal sliding
+        }
+
+        bullets.forEach((bullet, index) => {
+        if(true || !(horizontalCollisionDetected)){ //TEMP
+        
+
+            if (keys['a']) {
+              bullet.x += player.speed;
+            }
+            if (keys['d']) {
+              bullet.x -= player.speed;
+            }
+          }       
+        });
+
+      }
+
+      // Collision detection for vertical movement (W/S keys)
+      if (keys['w'] || keys['s']) {
+        if (keys['w']) tempOffsetY += player.speed;
+        if (keys['s']) tempOffsetY -= player.speed;
+
+        const playerRect = {
+          x: player.x - player.width / 2,
+          y: player.y - player.height / 2,
+          width: player.width,
+          height: player.height,
+        };
+
+        let verticalCollisionDetected = false;
+        walls.forEach((wall) => {
+          const wallRect = {
+            x: wall.x + offset.x,
+            y: wall.y + tempOffsetY,
+            width: wall.width,
+            height: wall.height,
+          };
+          if (checkCollision(playerRect, wallRect)) {
+            verticalCollisionDetected = true;
+          }
+        });
+
+        if (true || !verticalCollisionDetected) { //TEMP
+          offset.y = tempOffsetY;
+        } else {
+          tempOffsetY = offset.y; // Reset vertical offset to prevent diagonal sliding
+        }
+
+        bullets.forEach((bullet, index) => {
+        if(true || !(verticalCollisionDetected)){ //TEMP
+            if (keys['w']) {
+              bullet.y += player.speed;
+            }
+            if (keys['s']) {
+              bullet.y -= player.speed;
+            }
+          }       
+        });
+
+
+      }
+        // Calculate the angle between the player and the mouse
+
+      // Update bombs
+      const currentTime = Date.now();
+      bombs.forEach((bomb, index) => {
+        if (currentTime - bomb.plantedTime >= 3000) { // 3 seconds to explode
+          // Explode the bomb
+          const explosionRange = 200;
+
+          // Damage player if in range
+          const distanceToPlayer = Math.hypot(      
+            player.x - (bomb.x + offset.x),
+            player.y - (bomb.y + offset.y)
+        );
+          if (distanceToPlayer <= explosionRange) {
+            player.health = Math.max(0, player.health - (10 + 200/(distanceToPlayer/5))); // Reduce player health by half
+          }
+
+          // Damage villains if in range
+          villains.forEach((villain, vIndex) => {
+            const distanceToVillain = Math.hypot(villain.x - bomb.x, villain.y - bomb.y);
+            if (distanceToVillain <= explosionRange) {
+              villain.health = Math.max(0, villain.health - (10 + 200/(distanceToVillain/5))); // Reduce villain health by half
+              if (villain.health <= 0) {
+                villains.splice(vIndex, 1); // Remove dead villain
+              }
+            }
+          });
+
+          // Remove the bomb after explosion
+          bombs.splice(index, 1);
+        }
+      });
+
+      // Update bullets
+      bullets.forEach((bullet, index) => {
+        bullet.x += bullet.dx;
+        bullet.y += bullet.dy;
+
+        // Check collision with walls
+        walls.forEach((wall) => {
+          const wallX = wall.x + offset.x;
+          const wallY = wall.y + offset.y;
+          if (
+            bullet.x < wallX + wall.width &&
+            bullet.x + bullet.width > wallX &&
+            bullet.y < wallY + wall.height &&
+            bullet.y + bullet.height > wallY
+          ) {
+            bullets.splice(index, 1); // Remove bullet on collision
+          }
+        });
+
+        // Check collision with villains
+        villains.forEach((villain, vIndex) => {
+          const villainRect = {
+            x: villain.x + offset.x,
+            y: villain.y + offset.y,
+            width: villain.width,
+            height: villain.height,
+          };
+          if (
+            bullet.isPlayerBullet &&
+            bullet.x < villainRect.x + villainRect.width &&
+            bullet.x + bullet.width > villainRect.x &&
+            bullet.y < villainRect.y + villainRect.height &&
+            bullet.y + bullet.height > villainRect.y
+          ) {
+            villain.health -= 10; // Damage villain
+            bullets.splice(index, 1); // Remove bullet
+            if (villain.health <= 0) {
+              villains.splice(vIndex, 1); // Remove dead villain
+            }
+          }
+        });
+
+        // Remove bullets that go off-screen
+        if (
+          bullet.x < 0 ||
+          bullet.x > canvas.width ||
+          bullet.y < 0 ||
+          bullet.y > canvas.height
+        ) {
+          bullets.splice(index, 1);
+        }
+      });
+
+      // Update villains
+      villains.forEach((villain) => {
+        // Randomly choose a direction if no direction is set
+        if (!villain.direction) {
+          const directions = ['up', 'down', 'left', 'right'];
+          villain.direction = directions[Math.floor(Math.random() * directions.length)];
+        }
+
+        // Track the time since the villain last hit a wall
+        const currentTime = Date.now();
+        if (!villain.lastWallHitTime) {
+          villain.lastWallHitTime = currentTime;
+          villain.lastDirectionChangeTime = currentTime; // Set the initial direction change time
+        }
+
+        // Calculate the new position based on the current direction
+        let newX = villain.x;
+        let newY = villain.y;
+        switch (villain.direction) {
+          case 'up':
+            newY -= villainSpeed;
+            break;
+          case 'down':
+            newY += villainSpeed;
+            break;
+          case 'left':
+            newX -= villainSpeed;
+            break;
+          case 'right':
+            newX += villainSpeed;
+            break;
+        }
+
+        // Create the villain's bounding box at the new position
+        const newVillainRect = {
+          x: newX + offset.x,
+          y: newY + offset.y,
+          width: villain.width,
+          height: villain.height,
+        };
+
+        // Check for collisions with walls
+        let collisionDetected = false;
+        walls.forEach((wall) => {
+          const wallRect = {
+            x: wall.x + offset.x,
+            y: wall.y + offset.y,
+            width: wall.width,
+            height: wall.height,
+          };
+          if (checkCollision(newVillainRect, wallRect)) {
+            collisionDetected = true;
+          }
+        });
+
+        // If no collision, move the villain
+        if (!collisionDetected) {
+          villain.x = newX;
+          villain.y = newY;
+
+          // If no collision for 1 second, change direction every 500ms
+          if (currentTime - villain.lastWallHitTime > 1000) {
+            if (currentTime - villain.lastDirectionChangeTime > 500) {
+              // Change direction to a perpendicular one
+              const perpendicularDirections = {
+                up: ['left', 'right'],
+                down: ['left', 'right'],
+                left: ['up', 'down'],
+                right: ['up', 'down'],
+              };
+              // Get the perpendicular directions based on the current direction
+              const possibleDirections = perpendicularDirections[villain.direction];
+              villain.direction = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
+              villain.lastDirectionChangeTime = currentTime;
+            }
+          }
+        } else {
+          // If a collision is detected, update last hit time
+          villain.lastWallHitTime = currentTime;
+
+          // Choose a new random direction when a collision occurs
+          const directions = ['up', 'down', 'left', 'right'];
+          villain.direction = directions[Math.floor(Math.random() * directions.length)];
+        }
+
+        // Shoot at player every 0.5 seconds
+        if (currentTime - villain.lastShotTime > 500) {
+          // Adjust both player and villain positions by the offset
+          const adjustedPlayerX = player.x;
+          const adjustedPlayerY = player.y;
+          const adjustedVillainX = villain.x + offset.x;
+          const adjustedVillainY = villain.y + offset.y;
+
+          // Calculate the direction from the villain to the player
+          const dx = adjustedPlayerX - adjustedVillainX;
+          const dy = adjustedPlayerY - adjustedVillainY;
+          const distance = Math.hypot(dx, dy); // Distance between villain and player
+
+          // Avoid division by zero
+          if (distance > 0) {
+            // Normalize the direction vector
+            const directionX = dx / distance;
+            const directionY = dy / distance;
+
+            // Create a bullet heading towards the player
+            bullets.push({
+              x: adjustedVillainX,
+              y: adjustedVillainY,
+              dx: directionX * 5, // Bullet speed in the x-direction
+              dy: directionY * 5, // Bullet speed in the y-direction
+              width: 5,
+              height: 5,
+              isPlayerBullet: false,
+            });
+           // console.log("dx:", dx, "dy:", dy, "directionX:", directionX, "directionY:", directionY);
+
+
+            // Update the last shot time
+            villain.lastShotTime = currentTime;
+          }
+        }
+      });
+
+      // Check if player is hit by villain bullets
+      bullets.forEach((bullet, index) => {
+        if (!bullet.isPlayerBullet) {
+          const playerRect = {
+            x: player.x - player.width / 2,
+            y: player.y - player.height / 2,
+            width: player.width,
+            height: player.height,
+          };
+          if (
+            bullet.x < playerRect.x + playerRect.width &&
+            bullet.x + bullet.width > playerRect.x &&
+            bullet.y < playerRect.y + playerRect.height &&
+            bullet.y + bullet.height > playerRect.y
+          ) {
+            player.health -= 10; // Damage player
+            bullets.splice(index, 1); // Remove bullet
+          }
+
+        }
+      });
+
+
+
+
+
+        // Calculate the angle between the player and the mouse
+        player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+
+        // Calculate the angle for each villain to point toward the player
+        villains.forEach((villain) => {
+          const adjustedPlayerX = player.x;
+          const adjustedPlayerY = player.y;
+          const adjustedVillainX = villain.x + offset.x;
+          const adjustedVillainY = villain.y + offset.y;
+          villain.angle = Math.atan2(adjustedPlayerY - adjustedVillainY, adjustedPlayerX - adjustedVillainX);
+        });
+    }
+
+    // Draw function
+    const playerImage = new Image();
+playerImage.src = 'player.png'; // Path to your player image
+
+const villainImage= new Image();
+villainImage.src = 'villain.png'; // Path to your player image
+
+    function draw() {
+  // Draw grass background
+  const grassGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+
+  if(svgContent == village){
+    grassGradient.addColorStop(0, '#c6e2b5'); // Light green
+
+  } else if(svgContent == city){
+    grassGradient.addColorStop(0, '#999'); // Light green
+
+  }else{
+    grassGradient.addColorStop(0, '#999'); // Light green
+
+  }
+  ctx.fillStyle = grassGradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw walls with offset
+   // Draw walls with offset
+   walls.forEach((wall) => {
+  ctx.fillStyle = wall.fill || 'none';
+  ctx.strokeStyle = wall.stroke || 'none';
+  ctx.lineWidth = wall.strokeWidth || 1;
+
+  switch (wall.type) {
+    case 'rect':
+      ctx.fillRect(wall.x + offset.x, wall.y + offset.y, wall.width, wall.height);
+      break;
+
+    case 'circle':
+      ctx.beginPath();
+      ctx.arc(wall.cx + offset.x, wall.cy + offset.y, wall.r, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+
+    case 'line':
+      ctx.beginPath();
+      ctx.moveTo(wall.x1 + offset.x, wall.y1 + offset.y);
+      ctx.lineTo(wall.x2 + offset.x, wall.y2 + offset.y);
+      ctx.stroke();
+      break;
+
+    case 'path': {
+      ctx.beginPath();
+      const commands = wall.d.match(/[a-df-zA-DF-Z][^a-df-zA-DF-Z]*/g); // Split into commands
+      let currentX = 0, currentY = 0; // Current position for relative commands
+      let startX = 0, startY = 0; // Start position for closing paths
+
+      commands.forEach((command) => {
+        const type = command[0]; // Extract the command type (e.g., M, L, C)
+        const args = command.slice(1).trim().split(/[\s,]+/).map(parseFloat); // Extract the arguments
+
+        switch (type) {
+          case 'M': // Move to (absolute)
+            currentX = args[0] + offset.x;
+            currentY = args[1] + offset.y;
+            startX = currentX;
+            startY = currentY;
+            ctx.moveTo(currentX, currentY);
+            break;
+
+          case 'm': // Move to (relative)
+            currentX += args[0];
+            currentY += args[1];
+            startX = currentX;
+            startY = currentY;
+            ctx.moveTo(currentX + offset.x, currentY + offset.y);
+            break;
+
+          case 'L': // Line to (absolute)
+            currentX = args[0] + offset.x;
+            currentY = args[1] + offset.y;
+            ctx.lineTo(currentX, currentY);
+            break;
+
+          case 'l': // Line to (relative)
+            currentX += args[0];
+            currentY += args[1];
+            ctx.lineTo(currentX + offset.x, currentY + offset.y);
+            break;
+
+          case 'H': // Horizontal line to (absolute)
+            currentX = args[0] + offset.x;
+            ctx.lineTo(currentX, currentY);
+            break;
+
+          case 'h': // Horizontal line to (relative)
+            currentX += args[0];
+            ctx.lineTo(currentX + offset.x, currentY);
+            break;
+
+          case 'V': // Vertical line to (absolute)
+            currentY = args[0] + offset.y;
+            ctx.lineTo(currentX, currentY);
+            break;
+
+          case 'v': // Vertical line to (relative)
+            currentY += args[0];
+            ctx.lineTo(currentX, currentY + offset.y);
+            break;
+
+          case 'C': // Cubic Bezier curve (absolute)
+            ctx.bezierCurveTo(
+              args[0] + offset.x, args[1] + offset.y,
+              args[2] + offset.x, args[3] + offset.y,
+              args[4] + offset.x, args[5] + offset.y
+            );
+            currentX = args[4] + offset.x;
+            currentY = args[5] + offset.y;
+            break;
+
+          case 'c': // Cubic Bezier curve (relative)
+            ctx.bezierCurveTo(
+              currentX + args[0], currentY + args[1],
+              currentX + args[2], currentY + args[3],
+              currentX + args[4], currentY + args[5]
+            );
+            currentX += args[4];
+            currentY += args[5];
+            break;
+
+          case 'Q': // Quadratic Bezier curve (absolute)
+            ctx.quadraticCurveTo(
+              args[0] + offset.x, args[1] + offset.y,
+              args[2] + offset.x, args[3] + offset.y
+            );
+            currentX = args[2] + offset.x;
+            currentY = args[3] + offset.y;
+            break;
+
+          case 'q': // Quadratic Bezier curve (relative)
+            ctx.quadraticCurveTo(
+              currentX + args[0], currentY + args[1],
+              currentX + args[2], currentY + args[3]
+            );
+            currentX += args[2];
+            currentY += args[3];
+            break;
+
+          case 'Z': // Close path
+          case 'z':
+            ctx.closePath();
+            currentX = startX;
+            currentY = startY;
+            break;
+
+          default:
+            console.warn(`Unsupported path command: ${type}`);
+        }
+      });
+
+      if (wall.fill != "none") ctx.fill();
+      if (wall.stroke) ctx.stroke();
+      break;
+    }
+
+    case 'polygon':
+      ctx.beginPath();
+      const points = wall.points.split(' ').map((point) => {
+        const [x, y] = point.split(',').map(parseFloat);
+        return [x + offset.x, y + offset.y];
+      });
+      ctx.moveTo(points[0][0], points[0][1]);
+      points.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      break;
+
+    case 'ellipse':
+      ctx.beginPath();
+      ctx.ellipse(
+        wall.cx + offset.x,
+        wall.cy + offset.y,
+        wall.rx,
+        wall.ry,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      break;
+
+    case 'image': // Render preloaded images
+      if (wall.image.complete) {
+        ctx.save();
+        ctx.drawImage(
+          wall.image,
+          wall.x + offset.x,
+          wall.y + offset.y,
+          wall.width,
+          wall.height
+        );
+        ctx.restore();
+      } else {
+        console.warn(`Image not yet loaded: ${wall.href}`);
+      }
+      break;
+
+    default:
+      console.warn(`Unsupported shape type: ${wall.type}`);
+  }
+});
+
+
+
+  // Draw bombs
+  ctx.fillStyle = 'orange';
+
+bombs.forEach((bomb) => {
+  // Draw the first arc (fully opaque)
+  ctx.beginPath();
+  ctx.arc(bomb.x + offset.x, bomb.y + offset.y, 10, 0, Math.PI * 2); // Small bomb circle
+  ctx.fill();
+
+  // Save the current canvas state
+  ctx.save();
+
+  // Set global alpha for transparency (10% opacity)
+  ctx.globalAlpha = 0.1;
+
+  // Draw the second arc (larger circle with 10% opacity)
+  ctx.beginPath();
+  ctx.arc(bomb.x + offset.x, bomb.y + offset.y, 200, 0, Math.PI * 2); // Larger transparent circle
+  ctx.fill();
+
+  // Restore the canvas state to reset global alpha
+  ctx.restore();
+});
+
+  // Draw bullets
+  ctx.fillStyle = 'brown';
+  bullets.forEach((bullet) => {
+    ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+  });
+
+  // Draw player (rotated toward mouse)
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.rotate(player.angle);
+  if (playerImage.complete) {
+    ctx.drawImage(
+      playerImage,
+      -player.width / 2, // Center the image horizontally
+      -player.height / 2, // Center the image vertically
+      player.width, // Width of the player image
+      player.height // Height of the player image
+    );
+  } else {
+    console.warn('Player image not yet loaded.');
+    // Fallback to a blue square if the image isn't loaded
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+  }
+  ctx.restore();
+
+  // Draw player health bar
+  drawHealthBar(player.x, player.y - 20, player.health, 100);
+
+  // Draw villains (rotated toward player)
+  villains.forEach((villain) => {
+    const villainX = villain.x + offset.x;
+    const villainY = villain.y + offset.y;
+
+    ctx.save();
+    ctx.translate(villainX, villainY);
+    ctx.rotate(villain.angle);
+    if (villainImage.complete) {
+      ctx.drawImage(
+        villainImage,
+        -villain.width / 2, // Center the image horizontally
+        -villain.height / 2, // Center the image vertically
+        villain.width, // Width of the villain image
+        villain.height // Height of the villain image
+      );
+    } else {
+      console.warn('Villain image not yet loaded.');
+      // Fallback to a purple square if the image isn't loaded
+      ctx.fillStyle = 'purple';
+      ctx.fillRect(-villain.width / 2, -villain.height / 2, villain.width, villain.height);
+    }
+    ctx.restore();
+
+    // Draw villain health bar
+    drawHealthBar(villainX + villain.width / 2, villainY - 10, villain.health, villainHealth);
+  });
+
+  // Draw dashed gun pointing towards mouse
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]); // Dashed line pattern
+  ctx.beginPath();
+  ctx.moveTo(player.x, player.y);
+  ctx.lineTo(mouseX, mouseY);
+  ctx.stroke();
+  ctx.setLineDash([]); // Reset to solid line for other drawings
+}
+
+    // Game loop
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Parse the embedded SVG content
+    parseSVG(svgContent);
+
+    // Start the game loop
+    addVillain(0,300); // Add a villain
+    addVillain(700, 350); // Add a villain
+    addVillain(700, 400); // Add a villain
+    addVillain(700, 350); // Add a villain
+    gameLoop();
+  </script>
+</body>
+</html>

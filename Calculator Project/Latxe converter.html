@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AsciiMath to LaTeX Example</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/asciimath2latex/0.1.5/asciimath2latex.min.js"></script>
+</head>
+<body>
+    <h2>Enter Expression in ASCII Math:</h2>
+    <input type="text" id="expression-input">
+    <button id="convert-button">Convert</button>
+    <h3>LaTeX Output:</h3>
+    <pre id="latex-output"></pre>
+
+    <script>
+        document.getElementById('convert-button').onclick = function() {
+            const input = document.getElementById('expression-input').value;
+            // Convert to LaTeX
+            const latexStr = AsciiMath2LaTeX(input);
+            document.getElementById('latex-output').innerText = latexStr;
+        };
+    </script>
+</body>
+</html>
